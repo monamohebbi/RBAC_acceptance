@@ -1,0 +1,15 @@
+{
+  "type": "organization_user",
+  "relationships": {
+    "user": {
+      "data": {
+        "guid": "a6933ab9-212f-4457-bb36-3d4ccbb5726b"
+      }
+    },
+    "organization": {
+      "data": {
+        "guid": "7294265e-32f6-4d10-a0e5-b9e8a681fba2"
+      }
+    }
+  }
+}
