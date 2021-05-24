@@ -8,10 +8,11 @@ outfile=$1
 touch ${outfile}
 > ${outfile}
 
-printf "\nPOST v3/routes\n" >> ${outfile}
+request=v3/routes
+printf "\nPOST $request\n" >> ${outfile}
 
-domain_guid=40944397-e81b-4fa8-9691-6369ee57ea62
-guid=$(cf curl -X POST v3/routes -d "{
+domain_guid=cfc3a7a3-61fb-40ab-bb26-d6a6fffe2b1a
+guid=$(cf curl -X POST $request -d "{
     \"host\": \"app-${nameSuffix}\",
     \"path\": \"/some_path\",
     \"relationships\": {
@@ -19,7 +20,7 @@ guid=$(cf curl -X POST v3/routes -d "{
         \"data\": { \"guid\": \"$domain_guid\" }
       },
       \"space\": {
-        \"data\": { \"guid\": \"0cfa44d0-17d4-4351-b545-3284026360a6\" }
+        \"data\": { \"guid\": \"8e40386c-4e86-41c1-a6b5-b173f40648d1\" }
       }
     }
  }" | jq .'guid')
@@ -29,18 +30,17 @@ echo $guid >> $outfile
 guid=$(echo ${guid}| tr -d '"' | tr -d ' ')
 # echo "GUID!   ${guid}"
 
-printf "\nGET v3/routes\n" >> ${outfile}
+printf "\nGET $request\n" >> ${outfile}
 cf curl v3/routes | jq .resources[].guid  >> ${outfile}
 
-printf "\nGET v3/routes/${guid}\n" >> ${outfile}
-request="v3/routes/${guid}"
-cf curl ${request} | jq .'guid' >> ${outfile}
+printf "\nGET $request/$guid\n" >> ${outfile}
+cf curl $request/$guid | jq .'guid' >> ${outfile}
 
-request="/v3/domains/${domain_guid}/route_reservations"
+request="/v3/domains/$domain_guid/route_reservations"
 printf "\nGET $request\n" >> $outfile
-cf curl ${request} >> $outfile
+cf curl $request >> $outfile
 
-app_guid=57a88e91-3ffd-4724-8250-54425ae46b21
+app_guid=86bb6af6-6e14-425a-97b7-d9cc4f3b4ea3
 request="/v3/routes/$guid/destinations"
 printf "\nPOST $request\n" >> $outfile
 cf curl -X POST  $request -d "{
@@ -68,7 +68,7 @@ cf curl -X PATCH  $request -d "{
         \"app\": {
           \"guid\": \"$app_guid\"
         },
-        \"weight\": 61
+        \"weight\": null
       },
       {
         \"app\": {
@@ -77,7 +77,7 @@ cf curl -X PATCH  $request -d "{
                 \"type\": \"web\"
           }
         },
-        \"weight\": 39,
+        \"weight\": null,
         \"port\": 9000
       }
     ]
@@ -86,19 +86,20 @@ cf curl -X PATCH  $request -d "{
 printf "\nGET $request" >> $outfile
 cf curl $request >> $outfile
 
-printf "\nDELETE $request/:guid for all destinations\n"
-dests=$(cf curl $request | jq .destinations[] | jq . 'guid')
+printf "\nDELETE $request/:guid for all destinations\n" >> $outfile
+# dests=$(cf curl $request | jq .destinations[] | jq .guid)
+dests=$(cf curl $request |  jq .destinations[].guid)
+echo "************************************** $dests"
 for dest in $dests
 do
-  dest=$($dest | tr -d '"' | tr -d ' ')
-  cf curl -X DELETE $request/$dest -i | head -n 1 >> $outfile
+  destination_guid=$(echo $dest | tr -d '"' | tr -d ' ')
+  cf curl -X DELETE $request/$destination_guid -i | head -n 1 >> $outfile
 done
 
 request=v3/routes/$guid
 printf "\nDELETE $request\n" >> ${outfile}
-# request="v3/routes/${guid}"
 cf curl -X DELETE $request -i | head -n 1 >> ${outfile}
 
-# sleep 5
-# printf "\n GET $request\n" >> $outfile
-# cf curl ${request} -i | head -n 1 >> ${outfile}
+sleep 5
+printf "\n GET $request\n" >> $outfile
+cf curl ${request} -i | head -n 1 >> ${outfile}
